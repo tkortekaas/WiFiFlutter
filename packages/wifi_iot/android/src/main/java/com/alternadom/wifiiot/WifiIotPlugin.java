@@ -1288,58 +1288,137 @@ public class WifiIotPlugin
         return;
       }
 
-    // create network suggestion
-    final WifiNetworkSuggestion.Builder builder = new WifiNetworkSuggestion.Builder();
-    // set ssid
-    builder.setSsid(ssid);
-    builder.setIsHiddenSsid(isHidden != null ? isHidden : false);
-    if (bssid != null) {
-      final MacAddress macAddress = macAddressFromBssid(bssid);
-      if (macAddress == null) {
+      if (withInternet != null && withInternet) {
+        // create network suggestion
+        final WifiNetworkSuggestion.Builder builder = new WifiNetworkSuggestion.Builder();
+        // set ssid
+        builder.setSsid(ssid);
+        builder.setIsHiddenSsid(isHidden != null ? isHidden : false);
+        if (bssid != null) {
+          final MacAddress macAddress = macAddressFromBssid(bssid);
+          if (macAddress == null) {
+            handler.post(
+                new Runnable() {
+                  @Override
+                  public void run() {
+                    poResult.error("Error", "Invalid BSSID representation", "");
+                  }
+                });
+            return;
+          }
+          builder.setBssid(macAddress);
+        }
+
+        // set password
+        if (security != null && security.toUpperCase().equals("WPA")) {
+          builder.setWpa2Passphrase(password);
+        }
+
+        // remove suggestions if already existing
+        if (networkSuggestions != null) {
+          moWiFi.removeNetworkSuggestions(networkSuggestions);
+        }
+
+        //builder.setIsAppInteractionRequired(true);
+        final WifiNetworkSuggestion suggestion = builder.build();
+
+        networkSuggestions = new ArrayList<>();
+        networkSuggestions.add(suggestion);
+        if (joinOnce != null && joinOnce) {
+          suggestionsToBeRemovedOnExit.add(suggestion);
+        }
+
+        final int status = moWiFi.addNetworkSuggestions(networkSuggestions);
+        Log.e(WifiIotPlugin.class.getSimpleName(), "status: " + status);
+
         handler.post(
             new Runnable() {
               @Override
               public void run() {
-                poResult.error("Error", "Invalid BSSID representation", "");
+                poResult.success(status == WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS);
               }
             });
-        return;
-      }
-      builder.setBssid(macAddress);
-    }
-
-    // set password
-    if (security != null && security.toUpperCase().equals("WPA")) {
-      builder.setWpa2Passphrase(password);
-    }
-
-    // remove suggestions if already existing
-    if (networkSuggestions != null) {
-      moWiFi.removeNetworkSuggestions(networkSuggestions);
-    }
-
-    if (withInternet == null || !withInternet) {
-        builder.setIsAppInteractionRequired(true);
-    }
-    
-    final WifiNetworkSuggestion suggestion = builder.build();
-
-    networkSuggestions = new ArrayList<>();
-    networkSuggestions.add(suggestion);
-    if (joinOnce != null && joinOnce) {
-      suggestionsToBeRemovedOnExit.add(suggestion);
-    }
-
-    final int status = moWiFi.addNetworkSuggestions(networkSuggestions);
-    Log.e(WifiIotPlugin.class.getSimpleName(), "status: " + status);
-
-    handler.post(
-        new Runnable() {
-          @Override
-          public void run() {
-            poResult.success(status == WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS);
+      } else {
+        // Make new network specifier
+        final WifiNetworkSpecifier.Builder builder = new WifiNetworkSpecifier.Builder();
+        // set ssid
+        builder.setSsid(ssid);
+        builder.setIsHiddenSsid(isHidden != null ? isHidden : false);
+        if (bssid != null) {
+          final MacAddress macAddress = macAddressFromBssid(bssid);
+          if (macAddress == null) {
+            handler.post(
+                new Runnable() {
+                  @Override
+                  public void run() {
+                    poResult.error("Error", "Invalid BSSID representation", "");
+                  }
+                });
+            return;
           }
-        });
+          builder.setBssid(macAddress);
+        }
+
+        // set security
+        if (security != null && security.toUpperCase().equals("WPA")) {
+          builder.setWpa2Passphrase(password);
+        }
+
+        final NetworkRequest networkRequest =
+            new NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .setNetworkSpecifier(builder.build())
+                .build();
+
+        final ConnectivityManager connectivityManager =
+            (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        if (networkCallback != null) connectivityManager.unregisterNetworkCallback(networkCallback);
+
+        networkCallback =
+            new ConnectivityManager.NetworkCallback() {
+              boolean resultSent = false;
+
+              @Override
+              public void onAvailable(@NonNull Network network) {
+                super.onAvailable(network);
+                if (!resultSent) {
+
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    connectivityManager.bindProcessToNetwork(network);
+                  }
+                    
+                  joinedNetwork = network;
+                  poResult.success(true);
+                  resultSent = true;
+                }
+              }
+
+              @Override
+              public void onUnavailable() {
+                super.onUnavailable();
+                if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+                  connectivityManager.unregisterNetworkCallback(this);
+                }
+                if (!resultSent) {
+                  poResult.success(false);
+                  resultSent = true;
+                }
+              }
+
+              @Override
+              public void onLost(Network network) {
+                super.onLost(network);
+                if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+                  connectivityManager.unregisterNetworkCallback(this);
+                }
+              }
+            };
+
+        connectivityManager.requestNetwork(
+            networkRequest, networkCallback, handler, timeoutInSeconds * 1000);
+      }
     }
   }
 
