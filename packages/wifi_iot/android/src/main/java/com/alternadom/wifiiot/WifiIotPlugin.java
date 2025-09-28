@@ -1367,7 +1367,7 @@ public class WifiIotPlugin
         final NetworkRequest networkRequest =
             new NetworkRequest.Builder()
                 .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-                .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                // .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .setNetworkSpecifier(builder.build())
                 .build();
 
