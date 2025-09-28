@@ -1383,12 +1383,10 @@ public class WifiIotPlugin
               @Override
               public void onAvailable(@NonNull Network network) {
                 super.onAvailable(network);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                  connectivityManager.bindProcessToNetwork(network);
+                }
                 if (!resultSent) {
-
-                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    connectivityManager.bindProcessToNetwork(network);
-                  }
-                    
                   joinedNetwork = network;
                   poResult.success(true);
                   resultSent = true;
@@ -1398,7 +1396,7 @@ public class WifiIotPlugin
               @Override
               public void onUnavailable() {
                 super.onUnavailable();
-                if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                   connectivityManager.unregisterNetworkCallback(this);
                 }
                 if (!resultSent) {
@@ -1410,7 +1408,7 @@ public class WifiIotPlugin
               @Override
               public void onLost(Network network) {
                 super.onLost(network);
-                if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                   connectivityManager.unregisterNetworkCallback(this);
                 }
               }
