@@ -1317,10 +1317,7 @@ public class WifiIotPlugin
       if (networkSuggestions != null) {
         moWiFi.removeNetworkSuggestions(networkSuggestions);
       }
-
-      if (withInternet == false) {
-        builder.setIsAppInteractionRequired(true);
-      }
+        
       final WifiNetworkSuggestion suggestion = builder.build();
 
       networkSuggestions = new ArrayList<>();
@@ -1339,6 +1336,27 @@ public class WifiIotPlugin
               poResult.success(status == WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS);
             }
           });
+
+      ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+  
+      NetworkRequest request = new NetworkRequest.Builder()
+              .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+              .build();
+      
+      cm.registerNetworkCallback(request, new ConnectivityManager.NetworkCallback() {
+          @Override
+          public void onAvailable(Network network) {
+              Log.d("WifiIotPlugin", "Wi-Fi connected: " + network);
+      
+              // Bind process to this network if needed
+              cm.bindProcessToNetwork(network);
+          }
+      
+          @Override
+          public void onLost(Network network) {
+              Log.d("WifiIotPlugin", "Wi-Fi disconnected");
+          }
+      });
     }
   }
 
