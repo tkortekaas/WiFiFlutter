@@ -1337,7 +1337,7 @@ public class WifiIotPlugin
             }
           });
 
-      ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+      ConnectivityManager cm = (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
   
       NetworkRequest request = new NetworkRequest.Builder()
               .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
