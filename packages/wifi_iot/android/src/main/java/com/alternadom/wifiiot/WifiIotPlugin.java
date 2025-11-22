@@ -1058,9 +1058,11 @@ public class WifiIotPlugin
     private static String getSecurityType(ScanResult scanResult) {
         String capabilities = scanResult.capabilities;
 
-        if (capabilities.contains("WPA")
-                || capabilities.contains("WPA2")
-                || capabilities.contains("WPA/WPA2 PSK")) {
+        if (capabilities.contains("WPA3")) {
+            return "WPA3";
+        } else if (capabilities.contains("WPA2")) {
+            return "WPA2";
+        } else if (capabilities.contains("WPA")) {
             return "WPA";
         } else if (capabilities.contains("WEP")) {
             return "WEP";
@@ -1328,9 +1330,27 @@ public class WifiIotPlugin
                 builder.setBssid(macAddress);
             }
 
-            // set password
-            if (security != null && security.toUpperCase().equals("WPA")) {
-                builder.setWpa2Passphrase(password);
+            // Security
+            if (security != null) {
+                switch (security.toUpperCase()) {
+                    case "WPA":
+                    case "WPA2":
+                        suggestedNet.setWpa2Passphrase(password);
+                        break;
+
+                    case "WPA3":
+                    case "SAE": // optional alias
+                        suggestedNet.setWpa3Passphrase(password);
+                        break;
+
+                    case "WEP":
+                        poResult.error("Error", "WEP is not supported for Android SDK " + Build.VERSION.SDK_INT, "");
+                        return;
+
+                    default:
+                        poResult.error("Error", "Unknown security mode: " + security, "");
+                        return;
+                }
             }
 
             // remove suggestions if already existing

@@ -13,10 +13,12 @@ enum WIFI_AP_STATE {
   WIFI_AP_STATE_FAILED
 }
 
-enum NetworkSecurity { WPA, WEP, NONE }
+enum NetworkSecurity { WPA, WPA2, WPA3, WEP, NONE }
 
 const serializeNetworkSecurityMap = <NetworkSecurity, String>{
   NetworkSecurity.WPA: "WPA",
+  NetworkSecurity.WPA2: "WPA2",
+  NetworkSecurity.WPA3: "WPA3",
   NetworkSecurity.WEP: "WEP",
   NetworkSecurity.NONE: "NONE",
 };
