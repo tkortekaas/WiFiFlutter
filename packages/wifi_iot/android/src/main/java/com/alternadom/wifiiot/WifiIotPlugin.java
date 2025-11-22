@@ -72,6 +72,7 @@ public class WifiIotPlugin
     private WifiManager.LocalOnlyHotspotReservation apReservation;
     private WIFI_AP_STATE localOnlyHotspotState = WIFI_AP_STATE.WIFI_AP_STATE_DISABLED;
     private ConnectivityManager.NetworkCallback networkCallback;
+    private ConnectivityManager connectivityManager;
     private List<WifiNetworkSuggestion> networkSuggestions;
     private List<String> ssidsToBeRemovedOnExit = new ArrayList<String>();
     private List<WifiNetworkSuggestion> suggestionsToBeRemovedOnExit = new ArrayList<>();
@@ -931,6 +932,8 @@ public class WifiIotPlugin
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             final WifiNetworkSuggestion.Builder suggestedNet = new WifiNetworkSuggestion.Builder();
             suggestedNet.setSsid(ssid);
+            suggestedNet.setIsInitialAutojoinEnabled(true);
+            suggestedNet.setIsAppInteractionRequired(false);
             suggestedNet.setIsHiddenSsid(isHidden != null ? isHidden : false);
             if (bssid != null) {
                 final MacAddress macAddress = macAddressFromBssid(bssid);
@@ -1296,87 +1299,96 @@ public class WifiIotPlugin
                             poResult.success(connected);
                         }
                     });
-        } else {
-            // error if WEP security, since not supported
-            if (security != null && security.toUpperCase().equals("WEP")) {
+        }
+
+        // create network suggestion
+        final WifiNetworkSuggestion.Builder builder = new WifiNetworkSuggestion.Builder();
+        // set ssid
+        builder.setIsInitialAutojoinEnabled(true);
+        builder.setIsAppInteractionRequired(false);
+        builder.setSsid(ssid);
+        builder.setIsHiddenSsid(isHidden != null ? isHidden : false);
+        if (bssid != null) {
+            final MacAddress macAddress = macAddressFromBssid(bssid);
+            if (macAddress == null) {
                 handler.post(
                         new Runnable() {
                             @Override
                             public void run() {
-                                poResult.error(
-                                        "Error", "WEP is not supported for Android SDK " + Build.VERSION.SDK_INT, "");
+                                poResult.error("Error", "Invalid BSSID representation", "");
                             }
                         });
                 return;
             }
-
-            // create network suggestion
-            final WifiNetworkSuggestion.Builder builder = new WifiNetworkSuggestion.Builder();
-            // set ssid
-            builder.setSsid(ssid);
-            builder.setIsHiddenSsid(isHidden != null ? isHidden : false);
-            if (bssid != null) {
-                final MacAddress macAddress = macAddressFromBssid(bssid);
-                if (macAddress == null) {
-                    handler.post(
-                            new Runnable() {
-                                @Override
-                                public void run() {
-                                    poResult.error("Error", "Invalid BSSID representation", "");
-                                }
-                            });
-                    return;
-                }
-                builder.setBssid(macAddress);
-            }
-
-            // Security
-            if (security != null) {
-                switch (security.toUpperCase()) {
-                    case "WPA":
-                    case "WPA2":
-                        suggestedNet.setWpa2Passphrase(password);
-                        break;
-
-                    case "WPA3":
-                    case "SAE": // optional alias
-                        suggestedNet.setWpa3Passphrase(password);
-                        break;
-
-                    case "WEP":
-                        poResult.error("Error", "WEP is not supported for Android SDK " + Build.VERSION.SDK_INT, "");
-                        return;
-
-                    default:
-                        poResult.error("Error", "Unknown security mode: " + security, "");
-                        return;
-                }
-            }
-
-            // remove suggestions if already existing
-            if (networkSuggestions != null) {
-                moWiFi.removeNetworkSuggestions(networkSuggestions);
-            }
-
-            final WifiNetworkSuggestion suggestion = builder.build();
-
-            networkSuggestions = new ArrayList<>();
-            networkSuggestions.add(suggestion);
-            if (joinOnce != null && joinOnce) {
-                suggestionsToBeRemovedOnExit.add(suggestion);
-            }
-
-            final int status = moWiFi.addNetworkSuggestions(networkSuggestions);
-            Log.e(WifiIotPlugin.class.getSimpleName(), "status: " + status);
-
-            handler.post(
-                    new Runnable() {
-                        @Override
-                        public void run() {
-                            poResult.success(status == WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS);
-                        }
-                    });
+            builder.setBssid(macAddress);
         }
+
+        // Security
+        if (security != null) {
+            switch (security.toUpperCase()) {
+                case "WPA":
+                case "WPA2":
+                    builder.setWpa2Passphrase(password);
+                    break;
+
+                case "WPA3":
+                case "SAE": // optional alias
+                    builder.setWpa3Passphrase(password);
+                    break;
+
+                case "WEP":
+                    poResult.error("Error", "WEP is not supported for Android SDK " + Build.VERSION.SDK_INT, "");
+                    return;
+
+                default:
+                    poResult.error("Error", "Unknown security mode: " + security, "");
+                    return;
+            }
+        }
+
+        // remove suggestions if already existing
+        if (networkSuggestions != null) {
+            moWiFi.removeNetworkSuggestions(networkSuggestions);
+        }
+
+        final WifiNetworkSuggestion suggestion = builder.build();
+
+        networkSuggestions = new ArrayList<>();
+        networkSuggestions.add(suggestion);
+        if (joinOnce != null && joinOnce) {
+            suggestionsToBeRemovedOnExit.add(suggestion);
+        }
+
+        connectivityManager = (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        final int status = moWiFi.addNetworkSuggestions(networkSuggestions);
+        Log.e(WifiIotPlugin.class.getSimpleName(), "status: " + status);
+        NetworkRequest request =
+                new NetworkRequest.Builder()
+                        .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                        .build();
+
+        connectivityManager.registerNetworkCallback(request, new ConnectivityManager.NetworkCallback() {
+            @Override
+            public void onCapabilitiesChanged(Network network,
+                                              NetworkCapabilities networkCapabilities) {
+                Log.d(WifiIotPlugin.class.getSimpleName(),
+                        "onCapabilitiesChanged: " + networkCapabilities.toString());
+                if (networkCapabilities.hasCapability(
+                        NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL)) {
+                    Log.d(WifiIotPlugin.class.getSimpleName(),
+                            "onCapabilitiesChanged: Network has a captive portal");
+                }
+            }
+        });
+
+        handler.post(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        poResult.success(status == WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS);
+                    }
+                });
     }
 
     @SuppressWarnings("deprecation")

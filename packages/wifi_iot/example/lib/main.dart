@@ -6,7 +6,7 @@ import 'dart:io' show Platform;
 
 const String STA_DEFAULT_SSID = "STA_SSID";
 const String STA_DEFAULT_PASSWORD = "STA_PASSWORD";
-const NetworkSecurity STA_DEFAULT_SECURITY = NetworkSecurity.WPA;
+const NetworkSecurity STA_DEFAULT_SECURITY = NetworkSecurity.WPA3;
 
 const String AP_DEFAULT_SSID = "AP_SSID";
 const String AP_DEFAULT_PASSWORD = "AP_PASSWORD";
@@ -610,7 +610,7 @@ class _FlutterWifiIoTState extends State<FlutterWifiIoT> {
                 WiFiForIoTPlugin.connect(STA_DEFAULT_SSID,
                     password: STA_DEFAULT_PASSWORD,
                     joinOnce: true,
-                    security: NetworkSecurity.WPA);
+                    security: NetworkSecurity.WPA3);
               },
             ),
           ]);
@@ -625,7 +625,7 @@ class _FlutterWifiIoTState extends State<FlutterWifiIoT> {
               WiFiForIoTPlugin.connect(STA_DEFAULT_SSID,
                   password: STA_DEFAULT_PASSWORD,
                   joinOnce: true,
-                  security: NetworkSecurity.WPA);
+                  security: NetworkSecurity.WPA3);
             },
           ),
         ]);
@@ -640,7 +640,7 @@ class _FlutterWifiIoTState extends State<FlutterWifiIoT> {
             WiFiForIoTPlugin.connect(STA_DEFAULT_SSID,
                 password: STA_DEFAULT_PASSWORD,
                 joinOnce: true,
-                security: NetworkSecurity.WPA);
+                security: NetworkSecurity.WPA3);
           },
         ),
       ]);
