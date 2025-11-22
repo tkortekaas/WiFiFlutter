@@ -19,6 +19,9 @@ enum WiFiStandards {
 
   /// [Wi-Fi 802.11ad](https://en.wikipedia.org/wiki/IEEE_802.11ad).
   ad,
+
+  /// [Wi-Fi 802.11be](https://en.wikipedia.org/wiki/IEEE_802.11be).
+  be,
 }
 
 WiFiStandards _deserializeWiFiStandards(int? standardCode) {
@@ -33,6 +36,8 @@ WiFiStandards _deserializeWiFiStandards(int? standardCode) {
       return WiFiStandards.ax;
     case 7:
       return WiFiStandards.ad;
+    case 8:
+      return WiFiStandards.be;
     default:
       return WiFiStandards.unkown;
   }
@@ -57,6 +62,9 @@ enum WiFiChannelWidth {
 
   /// 160 MHZ, but 80MHZ + 80MHZ.
   mhz80Plus80,
+
+  /// 320 MHZ
+  mhz320,
 }
 
 WiFiChannelWidth _deserializeWiFiChannelWidth(int? channelWidthCode) {
@@ -71,6 +79,8 @@ WiFiChannelWidth _deserializeWiFiChannelWidth(int? channelWidthCode) {
       return WiFiChannelWidth.mhz160;
     case 4:
       return WiFiChannelWidth.mhz80Plus80;
+    case 5:
+      return WiFiChannelWidth.mhz320;
     default:
       return WiFiChannelWidth.unkown;
   }

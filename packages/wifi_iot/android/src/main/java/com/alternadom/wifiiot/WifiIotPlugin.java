@@ -1372,8 +1372,6 @@ public class WifiIotPlugin
             @Override
             public void onCapabilitiesChanged(Network network,
                                               NetworkCapabilities networkCapabilities) {
-                Log.d(WifiIotPlugin.class.getSimpleName(),
-                        "onCapabilitiesChanged: " + networkCapabilities.toString());
                 if (networkCapabilities.hasCapability(
                         NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL)) {
                     Log.d(WifiIotPlugin.class.getSimpleName(),
