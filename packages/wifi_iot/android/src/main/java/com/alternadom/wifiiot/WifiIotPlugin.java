@@ -1331,13 +1331,11 @@ public class WifiIotPlugin
             switch (security.toUpperCase()) {
                 case "WPA":
                 case "WPA2":
-                    builder.setIsAppInteractionRequired(false);
                     builder.setWpa2Passphrase(password);
                     break;
 
                 case "WPA3":
                 case "SAE": // optional alias
-                    builder.setIsAppInteractionRequired(false);
                     builder.setWpa3Passphrase(password);
                     break;
 
@@ -1347,7 +1345,6 @@ public class WifiIotPlugin
 
                 case "NONE":
                     // No security
-                    builder.setIsAppInteractionRequired(true);
                     break;
 
                 default:
