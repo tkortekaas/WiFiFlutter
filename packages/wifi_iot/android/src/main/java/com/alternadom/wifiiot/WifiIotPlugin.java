@@ -72,7 +72,6 @@ public class WifiIotPlugin
     private WifiManager.LocalOnlyHotspotReservation apReservation;
     private WIFI_AP_STATE localOnlyHotspotState = WIFI_AP_STATE.WIFI_AP_STATE_DISABLED;
     private ConnectivityManager.NetworkCallback networkCallback;
-    private ConnectivityManager connectivityManager;
     private List<WifiNetworkSuggestion> networkSuggestions;
     private List<String> ssidsToBeRemovedOnExit = new ArrayList<String>();
     private List<WifiNetworkSuggestion> suggestionsToBeRemovedOnExit = new ArrayList<>();
@@ -961,6 +960,10 @@ public class WifiIotPlugin
                         poResult.error("Error", "WEP is not supported for Android SDK " + Build.VERSION.SDK_INT, "");
                         return;
 
+                    case "NONE":
+                        // No security
+                        break;
+
                     default:
                         poResult.error("Error", "Unknown security mode: " + security, "");
                         return;
@@ -1328,17 +1331,24 @@ public class WifiIotPlugin
             switch (security.toUpperCase()) {
                 case "WPA":
                 case "WPA2":
+                    builder.setIsAppInteractionRequired(false);
                     builder.setWpa2Passphrase(password);
                     break;
 
                 case "WPA3":
                 case "SAE": // optional alias
+                    builder.setIsAppInteractionRequired(false);
                     builder.setWpa3Passphrase(password);
                     break;
 
                 case "WEP":
                     poResult.error("Error", "WEP is not supported for Android SDK " + Build.VERSION.SDK_INT, "");
                     return;
+
+                case "NONE":
+                    // No security
+                    builder.setIsAppInteractionRequired(true);
+                    break;
 
                 default:
                     poResult.error("Error", "Unknown security mode: " + security, "");
@@ -1359,26 +1369,12 @@ public class WifiIotPlugin
             suggestionsToBeRemovedOnExit.add(suggestion);
         }
 
-        connectivityManager = (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
-
         final int status = moWiFi.addNetworkSuggestions(networkSuggestions);
         Log.e(WifiIotPlugin.class.getSimpleName(), "status: " + status);
         NetworkRequest request =
                 new NetworkRequest.Builder()
                         .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
                         .build();
-
-        connectivityManager.registerNetworkCallback(request, new ConnectivityManager.NetworkCallback() {
-            @Override
-            public void onCapabilitiesChanged(Network network,
-                                              NetworkCapabilities networkCapabilities) {
-                if (networkCapabilities.hasCapability(
-                        NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL)) {
-                    Log.d(WifiIotPlugin.class.getSimpleName(),
-                            "onCapabilitiesChanged: Network has a captive portal");
-                }
-            }
-        });
 
         handler.post(
                 new Runnable() {
